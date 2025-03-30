@@ -1,0 +1,278 @@
+#def connect_four_ab(contents, turn, max_depth):
+#     #TODO
+#     return ''
+
+# if __name__ == '__main__':
+#     # Example function call below, you can add your own to test the connect_four_mm function
+#     print(connect_four_ab(".ryyrry,.rryry.,..y.r..,..y....,.......,.......", "red", 4))
+
+
+import sys
+
+nodes_counter = 0
+
+def connect_four_ab(board_state, player, max_depth):
+    """
+    So given a board state from input, 
+    the current player (red or yellow's turn)
+    and the maximum search depth
+    return:
+    1. the best column to play 
+    2. the number of nodes explored
+    """
+
+    # build the board first from the given input board state
+    board = construct_board(board_state)
+
+    # reset our nodes counter before each function search
+    global nodes_counter
+    nodes_counter = 0
+
+    # checking 
+    print("Initial board:\n")
+    for row_index in range(5, -1, -1):
+        print(f"Row {row_index}: {board[row_index]}")
+    print("first player ", player)
+    print("max depth ", max_depth)
+    print("nodes counter = ", nodes_counter)
+
+    # now we run the minimax algo with the alpha-beta pruning to find the best column to play
+    # and this should update the node counter in the background
+    best_play = minimax_decision(board, player, max_depth)
+
+    result = f"{best_play}\n{nodes_counter}"
+
+    return result
+
+def construct_board(board_state):
+    """
+    to construct the initial game board,
+    from the board state input
+    split the string by commas into 6 rows
+    row 0 should be at the bottom
+    row 5 at the top
+    return:
+    2D list of the inital  board
+    """
+    rows = board_state.split(",")
+    board = [list(i) for i in rows] 
+    return board
+
+def minimax_decision(board_state, player, max_depth):
+    """
+    finds the coln to play using the minimax algo
+    red = max
+    yellow = min
+    return:
+    the best column to play
+    """
+    best_utility, optimal_coln = ab_algo(board_state, max_depth, player, -sys.maxsize, sys.maxsize)
+
+    return optimal_coln
+
+def ab_algo(board_state, depth, player, alpha, beta):
+    """
+    this is the alpha beta algo
+    return:
+    1. best value to choose based on the player
+    2. best move to play
+    steps:
+    1. check for terminal states or if the game is over
+    2. get all the available moves 
+    3.1 if player is red we are maxing so start with the smallest number possible
+    and see if there are any larger numbers. and for every coln we want to make a move and place
+    our chip to build the tree. then run the minimax algo on the new child board with player yellow 
+    update values and return the best value and move
+    3.2 if player is yellow
+    """
+    
+    global nodes_counter
+
+    utilval = utility(board_state)
+    nodes_counter += 1
+
+    if utilval is not None or depth == 0:
+        if utilval is not None:
+            return utilval, -1
+        else:
+            return evaluation(board_state), -1
+        
+    valid_moves = get_valid_moves(board_state)
+    if not valid_moves: #board is full
+        return 0, -1
+    
+    if player == "red":
+        best_value = -sys.maxsize # starting with -infinety
+        best_move = valid_moves[0]
+        for coln in valid_moves:
+            new_board = make_move(board_state, coln, "r")
+            new_utility, new_move = ab_algo(new_board, depth -1, "yellow", alpha, beta)
+            
+            # best_value = max(best_value, new_utility) 
+            # alpha = max(alpha, best_value)
+
+            if new_utility > best_value:
+                best_value = new_utility
+                best_move = coln
+            
+            alpha = max(alpha, best_value)
+            if beta <= alpha:
+                break
+
+        return best_value, best_move
+    
+    elif player == "yellow":
+        best_value = sys.maxsize # starting with infinety
+        best_move = valid_moves[0]
+        for coln in valid_moves:
+            new_board = make_move(board_state, coln, "y")
+            new_utility, new_move = ab_algo(new_board, depth -1, "red", alpha, beta)
+            if new_utility < best_value:
+                best_value = new_utility
+                best_move = coln
+            
+            beta = min(beta, best_value)
+            if beta <= alpha:
+                break
+
+        return best_value, best_move
+    
+def get_valid_moves(board_state):
+    """
+    create an empty list of potential valid colns to play
+    for each column,
+    check if the top row is empty
+    if empty then it is a valid move
+    return:
+    list of valid colns
+    """
+    valid_moves = []
+    for coln in range(7):
+        if board_state[5][coln] == ".":
+            valid_moves.append(coln)
+
+    return valid_moves
+
+def make_move(board_state, coln, chip):
+    """
+    construct a copy of the board
+    given a coln,
+    it loops from the bottom row index 0 to the top row of that coln
+    when it finds a spot that is empty (.) it places a chip in (r or y)
+    return:
+    the new board state
+    """
+    new_board = []
+    for row in board_state:
+        new_board.append(row[:]) 
+
+    for i in range(6):
+        if new_board[i][coln] == '.':
+            new_board[i][coln] = chip
+            break
+
+    return new_board
+    
+def utility(board_state):
+    """
+    detects if the board is in a terminal state
+    return:
+    * +10000 if red wins
+    * -10000 if yellow wins
+    * 0 if the board is full and it is a draw
+    * None if the game has not ended yet
+    """
+    if has_four_in_a_row(board_state, 'r'):
+        return 10000
+    if has_four_in_a_row(board_state, 'y'):
+        return -10000
+    if all('.' not in row for row in board_state):
+        return 0
+    return None 
+
+def has_four_in_a_row(board, color):
+    """
+    check for 4 or more in a row
+    """
+    for row in range(6):
+        for coln in range(7):
+            if board[row][coln] == color:
+                if check_direction(board, row, coln, 1, 0, color, 4):  # horizontal
+                    return True
+                if check_direction(board, row, coln, 0, 1, color, 4):  # vertical
+                    return True
+                if check_direction(board, row, coln, 1, 1, color, 4):  # diagonal up-right
+                    return True
+                if check_direction(board, row, coln, 1, -1, color, 4): # diagonal down-right
+                    return True
+    return False
+
+def check_direction(board, row, col, d_row, d_col, color, length):
+    """
+    Checks if there's a sequence 
+    """
+    for i in range(length):
+        r = row + i*d_row
+        c = col + i*d_col
+        if r < 0 or r > 5 or c < 0 or c > 6 or board[r][c] != color:
+            return False
+    return True
+
+def evaluation(board_state):
+    return score(board_state, 'r') - score(board_state, 'y')
+
+def score(board_state,  colour):
+    # Count tokens
+    tokens = sum(row.count(colour) for row in board_state)
+    # Count 2 in a row, 3 in a row, 4+ in a row
+    count2 = count_consecutive(board_state, colour, 2)
+    count3 = count_consecutive(board_state, colour, 3)
+    count4plus = count_consecutive(board_state, colour, 4)  # 4 or more
+
+    return tokens + 10*count2 + 100*count3 + 1000*count4plus
+
+def count_consecutive(board, color, target_length):
+    """
+    Counts how many distinct sequences of exactly target_length
+    appear on the board for the given color.
+    """
+    count = 0
+    for r in range(6):
+        for c in range(7):
+            if board[r][c] == color:
+                # Check all directions
+                count += scan_consecutive(board, r, c, 1, 0, color, target_length)
+                count += scan_consecutive(board, r, c, 0, 1, color, target_length)
+                count += scan_consecutive(board, r, c, 1, 1, color, target_length)
+                count += scan_consecutive(board, r, c, 1, -1, color, target_length)
+    return count
+
+
+def scan_consecutive(board, row, col, d_row, d_col, color, target_length):
+    """
+    Checks if there's a consecutive sequence of length exactly target_length
+    (or >= target_length if target_length == 4) starting from (row, col)
+    in direction (d_row, d_col).
+    Returns 1 if found, else 0.
+    """
+    # Move step by step and verify color
+    length_found = 1
+    r, c = row, col
+    while True:
+        r += d_row
+        c += d_col
+        if r < 0 or r > 5 or c < 0 or c > 6 or board[r][c] != color:
+            break
+        length_found += 1
+
+    if target_length < 4:
+        # Return 1 if exactly target_length
+        return 1 if length_found == target_length else 0
+    else:
+        # For 4 or more, return 1 if we have at least 4
+        return 1 if length_found >= 4 else 0
+
+if __name__ == '__main__':
+    # Example function call below, you can add your own to test the connect_four_mm function
+    result = connect_four_ab(".......,.......,.......,.......,.......,.......", "red", 1)
+    print(result)
