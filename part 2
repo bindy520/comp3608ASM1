@@ -74,16 +74,31 @@ def ab_algo(board_state, depth, player, alpha, beta):
     """
     this is the alpha beta algo
     return:
-    1. best value to choose based on the player
+    1. best value to choose based on the player (maximising/minimising)
     2. best move to play
     steps:
     1. check for terminal states or if the game is over
     2. get all the available moves 
-    3.1 if player is red we are maxing so start with the smallest number possible
-    and see if there are any larger numbers. and for every coln we want to make a move and place
-    our chip to build the tree. then run the minimax algo on the new child board with player yellow 
-    update values and return the best value and move
-    3.2 if player is yellow
+    3. perform minimax algo with alpha beta pruning
+    3.1 if player is red we are maxmising so start with the smallest number possible.
+        Each column is iterated to place the chip to build the tree by making a move. 
+        The alpha beta minimax algorithm is recursively called with the updated board state and the player yellow. 
+        The best value and best move is updated. 
+        The alpha value is updated. 
+        Pruning performed to decide whether to stop the exploration. 
+           
+    3.2 if player is yellow we are minimising so start with the largest number possible. 
+        Each column is iterated to place the chip to build the tree by making a move. 
+        The alpha beta minimax algorithm is recursively called with the updated board state and the player red. 
+        The best value and best move is updated. 
+        The beta value is updated. 
+        Pruning performed to decide whether to stop the exploration. 
+
+    Alpha-Beta Pruning Explanation:
+    Alpha represents the best value that the red player (maximising player) can guarantee.
+    Beta represents the best value that the yellow player (minimising player) can guarantee.
+    If beta is less than or equal to alpha, it means the current branch cannot influence the final decision,
+      so further exploration of this branch is unnecessary (pruning).
     """
     
     global nodes_counter
@@ -102,7 +117,7 @@ def ab_algo(board_state, depth, player, alpha, beta):
         return 0, -1
     
     if player == "red":
-        best_value = -sys.maxsize # starting with -infinety
+        best_value = -sys.maxsize # starting with -infinity (the smallest number)
         best_move = valid_moves[0]
         for coln in valid_moves:
             new_board = make_move(board_state, coln, "r")
@@ -116,6 +131,7 @@ def ab_algo(board_state, depth, player, alpha, beta):
                 best_move = coln
             
             alpha = max(alpha, best_value)
+            # Alpha Beta Pruning
             if beta <= alpha:
                 break
 
@@ -127,11 +143,16 @@ def ab_algo(board_state, depth, player, alpha, beta):
         for coln in valid_moves:
             new_board = make_move(board_state, coln, "y")
             new_utility, new_move = ab_algo(new_board, depth -1, "red", alpha, beta)
+            
+            # best_value = min(best_value, new_utility) 
+            # beta = min(beta, best_value)
+            
             if new_utility < best_value:
                 best_value = new_utility
                 best_move = coln
             
             beta = min(beta, best_value)
+            # Alpha Beta Pruning
             if beta <= alpha:
                 break
 
